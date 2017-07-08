@@ -1,161 +1,45 @@
+import GameCore_Client from '../common/GameCore_Client';
+import renderer from './app/renderer';
+import Player from '../common/Player';
 
-var game = {
-  players: []
-};
+import p5 from 'p5';
 
-var clientFrameIndex = null;
-var frameSize = 30;
+setTimeout(function() {
+  console.log('document ready');
 
-var inputBuffer = [];
+  var rend = new p5(renderer);
+  var core = new GameCore_Client(rend);
+  core.player = new Player();
 
-startFrameIndexTimer = function(value) {
-  clientFrameIndex = value;
-  frameInterval = setInterval(function() {
-    clientFrameIndex++;
-    // console.log(clientFrameIndex);
-  }, frameSize)
-}
+  core.update();
 
-serverFrameIndex = 0
+  rend.draw = () => {
+    rend.background(51);
+    rend.strokeWeight(1);
 
-var Network = {
+    rend.ellipse(core.player.body.position[0], core.player.body.position[1],
+      core.player.getRenderCircle()[0], core.player.getRenderCircle()[1]);
 
-  socket: null,
-  firstConnection : true,
-  socketId: null,
-
-  openSocket: function() {
-    Network.socket = io('http://localhost:3000');
-    Network.socket.on('connect', Network.onConnect)
-  },
-
-  onConnect: function() {
-    console.log('connected')
-    if(Network.firstConnection) {
-        Network.setupEvents()
+    for (let player in core.players) {
+      rend.ellipse(parseFloat(core.players[player].body.position[0]), parseFloat(core.players[player].body.position[1]),
+       core.players[player].getRenderCircle()[0], core.players[player].getRenderCircle()[1]);
     }
-    Network.firstConnection = false;
-  },
 
-  setupEvents: function() {
+    for (let bullet in core.bullets) {
+      rend.ellipse(core.bullets[bullet].body.position[0], core.bullets[bullet].body.position[1],
+        10, 10);
+    }
 
-    Network.socket.on('frameIndex', function(data) {
-      serverFrameIndex = data;
-      if (!clientFrameIndex) {
-        startFrameIndexTimer(data);
-      }
-    })
+    for (let obstacleId in core.obstacles) {
+      rend.ellipse(core.obstacles[obstacleId].body.position[0], core.obstacles[obstacleId].body.position[1],
+        40, 40);
+    }
 
-    Network.socket.on('clientId', function(data) {
-      Network.socketId = data;
-    })
-
-    Network.socket.on('clientData', function(data) {
-      console.log(data);
-    })
-
-    Network.socket.on('gameState', function(data) {
-      console.log('gameState', data);
-      var player = Object.assign({}, _.find(game.players, function(p) {
-        return p.id === Network.socketId
-      }));
-
-      mergeGameData(data);
-
-      // Object.assign(game, data);
-      // game.players[Network.socketId] = player;
-
-    })
-
-    Network.socket.on('disconnect', function() {
-      console.log('disconnect')
-    })
   }
 
-}
-
-function mergeGameData(data) {
-
-  _.assignIn(game, data);
-
-}
-
-var Input = function() {
-  this.keyCode = null;
-}
-
-document.addEventListener('keydown', function(event) {
-  var keyName = event.key;
-  var input = new Input();
-  input.keyCode = event.key;
-  inputBuffer.push(input);
-
-  movePlayer(input);
-})
-
-function sendInputs() {
-  if (inputBuffer.length > 0) {
-    Network.socket.emit('input', inputBuffer);
-    inputBuffer = [];
-  }
-}
-
-Network.openSocket();
-
-setInterval(sendInputs, frameSize);
-
-function mouseClicked() {
-
-  var player = _.find(game.players, function(p) {
-    return p.id === Network.socketId
-  });
-
-  if (!player.pos.x) {
-      Network.socket.emit('playerPosition', [mouseX, mouseY])
-
-      player.pos = {
-        x : mouseX,
-        y: mouseY
-      };
-  }
-  return false;
-}
-
-function setup() {
-  createCanvas(300, 300);
-  background(51);
-}
-
-function draw() {
-  background(51);
-  strokeWeight(10);
-  stroke(255);
-  for(var i = 0; i < game.players.length; i++) {
-    point(game.players[i].pos.x, game.players[i].pos.y);
+  rend.mouseClicked = function() {
+      core.handleMouseClick(rend.mouseX, rend.mouseY);
   }
 
-}
 
-function movePlayer(input) {
-
-  var player = _.find(game.players, function(p) {
-    return p.id === Network.socketId;
-  })
-
-  switch (input.keyCode) {
-        case 'a':
-          player.pos.x -= 5;
-          break;
-          case 'd':
-            player.pos.x += 5;
-            break;
-            case 'w':
-              player.pos.y -= 5;
-              break;
-              case 's':
-                player.pos.y += 5;
-                break;
-        default:
-          break;
-      }
-}
+}, 200)

@@ -1,0 +1,33 @@
+{
+  "name": "multiplayer",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start-server": "nodemon server/main.js",
+    "start-client": "cd client; ./node_modules/.bin/webpack-dev-server"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sickDevelopers/multiplayer.git"
+  },
+  "dependencies": {
+    "lodash": "^4.17.4",
+    "p2": "^0.7.1",
+    "socket.io": "^2.0.2"
+  },
+  "devDependencies": {
+    "babel-core": "^6.24.1",
+    "babel-loader": "^7.0.0",
+    "babel-preset-env": "^1.5.2",
+    "webpack-dev-server": "^2.4.5",
+    "webpack": "^2.6.1"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/sickDevelopers/multiplayer/issues"
+  },
+  "homepage": "https://github.com/sickDevelopers/multiplayer#readme"
+}
