@@ -5,7 +5,7 @@ const Bullet = function() {
   this.shape = new p2.Circle({
     radius: 10
   });
-  this.shape.sensor = true;
+  // this.shape.sensor = true;
 
   this.life = 30;
 
