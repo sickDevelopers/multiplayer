@@ -4,6 +4,15 @@ const Player = function(params) {
 
   this.inputs = [];
 
+  this.type = 'player';
+
+  this.isAlive = true;
+
+  this.points = 0;
+
+  this.health = 10;
+  this.color = getRandomColor();
+
   Object.assign(this, params);
 
   this.shape = new p2.Circle({
@@ -26,6 +35,17 @@ Player.prototype.getRenderCircle = function() {
     this.shape.radius * 1.8,
     this.shape.radius * 1.8,
   ]
+}
+
+function getRandomColor() {
+
+  const colors = [
+    '#ff0000',
+    '#00ff00',
+    '#0000ff'
+  ];
+
+  return colors[Math.floor(Math.random() * colors.length)];
 }
 
 module.exports = Player;

@@ -95,6 +95,11 @@ GameCore_Server.prototype.updateSinglePlayerPhysics = function(player) {
 
   let {movementVector, angle, newBullets} = this.processInput(player);
 
+  if (!player.isAlive) {
+    this.world.removeBody(player.body);
+    return;
+  }
+
   movementVector[0] = this.playerSpeed * movementVector[0];
   movementVector[1] = this.playerSpeed * movementVector[1];
 
@@ -113,15 +118,26 @@ GameCore_Server.prototype.updateSinglePlayerPhysics = function(player) {
 
   for (let i = 0; i < newBullets.length; i++) {
 
-    startX = player.body.position[0] + (10 * Math.cos(player.body.angle)),
-    startY = player.body.position[1] + (10 * Math.sin(player.body.angle)),
+    // startX = player.body.position[0] + (40 * Math.cos(player.body.angle)),
+    // startY = player.body.position[1] + (40 * Math.sin(player.body.angle)),
+
+    startX = player.body.position[0],
+    startY = player.body.position[1],
+
 
     endX = parseFloat(newBullets[i][0]),
     endY = parseFloat(newBullets[i][1]);
 
     var bulletDirectionAngle = Math.atan2(endY - startY, endX - startX);
 
-    this.addBullet(bulletId, startX, startY, endX, endY);
+    let bulletParams = {
+      bulletId,
+      startX,
+      startY,
+      owner: player.id
+    }
+
+    this.addBullet(bulletParams);
 
     var magnitude = 1000;
     var vector = [Math.cos(bulletDirectionAngle) * magnitude , Math.sin(bulletDirectionAngle) * magnitude];
@@ -144,14 +160,18 @@ GameCore_Server.prototype.serverUpdate = function() {
     positions: Object.keys(this.players).reduce((acc, next) => {
       acc[next] = {
         pos: this.players[next].body.position,
-        angle: this.players[next].body.angle
+        angle: this.players[next].body.angle,
+        health: this.players[next].health,
+        points: this.players[next].points,
+        isAlive: this.players[next].isAlive
       }
       return acc;
     }, {}),
     bullets: Object.keys(this.bullets).reduce((acc, next) => {
       // console.log('sent bullets', this.bullets[next].body.position);
       acc[next] = {
-        pos: this.bullets[next].body.position
+        pos: this.bullets[next].body.position,
+        owner: this.bullets[next].owner
       }
       return acc;
     }, {}),

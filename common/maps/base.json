@@ -1,0 +1,49 @@
+{
+  "name": "Test Map",
+  "height": 1000,
+  "width": 2000,
+  "obstacles": [
+    {
+      "type": "rect",
+      "x": 200,
+      "y": 170,
+      "height": 50,
+      "width": 200
+    },
+    {
+      "type": "rect",
+      "x": 500,
+      "y": 170,
+      "height": 50,
+      "width": 200
+    },
+    {
+      "type": "rect",
+      "x": 1100,
+      "y": 100,
+      "height": 200,
+      "width": 50
+    },
+    {
+      "type": "rect",
+      "x": 300,
+      "y": 800,
+      "height": 30,
+      "width": 300
+    },
+    {
+      "type": "rect",
+      "x": 1500,
+      "y": 500,
+      "height": 220,
+      "width": 100
+    },
+    {
+      "type": "rect",
+      "x": 900,
+      "y": 400,
+      "height": 50,
+      "width": 200
+    }
+  ]
+}

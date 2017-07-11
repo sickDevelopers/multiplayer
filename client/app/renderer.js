@@ -6,7 +6,7 @@ const Renderer = function(p) {
 
   p.setup = () => {
     p.createCanvas(width, height);
-    p.background(1);
+    p.background(51);
   }
 
 }
@@ -23,5 +23,7 @@ Renderer.getDocumentSize = function() {
 
   return {height, width};
 }
+
+
 
 module.exports = Renderer;

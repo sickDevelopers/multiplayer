@@ -35,6 +35,8 @@ const GameCore = function(gameInstance) {
 
   this.gamePort = 8502;
 
+  this.viewport = undefined;
+
   this.world = new p2.World({
     gravity: [0, 0]
   });
@@ -47,28 +49,117 @@ const GameCore = function(gameInstance) {
 
 }
 
+GameCore.prototype.getScreenX = function(x) {
+  if (!this.viewport) {
+    return x;
+  }
+  return x - this.viewport.x;
+}
+
+GameCore.prototype.getScreenY = function(y) {
+  if (!this.viewport) {
+    return y;
+  }
+  return y - this.viewport.y;
+}
+
+GameCore.prototype.getWorldX = function(screenX) {
+  if (!this.viewport) {
+    return undefined;
+  }
+  return screenX + this.viewport.x;
+}
+
+GameCore.prototype.getWorldY = function(screenY) {
+  if (!this.viewport) {
+    return undefined;
+  }
+  return screenY + this.viewport.y;
+}
+
 GameCore.prototype.createWorldEvents = function() {
 
-  this.world.on("beginContact",function(event){
+  this.world.on("beginContact", (event) => {
 
-      console.log('collision');
+      // console.log('collision');
 
-      // Check if our sensor body is involved in this contact event.
-      // This might be false if the user added more bodies via the
-      // GUI, that collides.
-      // if(event.bodyA===body || event.bodyB===body){
-      //
-      //     // Check if the body is added to the world. This should be
-      //     // true, but better be safe.
-      //     if(body.world){
-      //
-      //         // Remove the body from the world.
-      //         world.removeBody(body);
-      //     }
-      // }
+      const objectA = this.findByBodyId(event.bodyA.id);
+      const objectB = this.findByBodyId(event.bodyB.id);
+
+      if (!objectA || !objectB) {
+        return;
+      }
+
+      // console.log(objectA.type, objectB.type);
+
+      if (
+        objectA.type === 'player' && objectB.type === 'bullet'
+        || objectB.type === 'player' && objectA.type === 'bullet'
+      ) {
+
+        let player, bullet;
+        if (objectA.type === 'player') {
+          player = objectA;
+          bullet = objectB;
+        } else {
+          player = objectB;
+          bullet = objectA;
+        }
+
+        if (bullet.owner === player.id) {
+          return;
+        }
+
+        // QUI E' una HIT
+        player.health -= 1;
+
+        if (player.health <= 0) {
+          player.health = 0;
+          console.log('PLAYER DEAD!!');
+          player.isAlive = false;
+
+          this.players[bullet.owner].points += 1;
+
+        }
+
+      }
+
   });
 
 }
+
+GameCore.prototype.findByBodyId = function(id) {
+
+  let found = undefined;
+
+  if (this.player && this.player.body.id === id) {
+    found = this.player;
+  }
+
+  if (found) {
+    return found;
+  }
+
+  const p = _.find(Object.keys(this.players), pId => {
+    return this.players[pId].body.id === id;
+  })
+
+  if (p) {
+    return this.players[p];
+  }
+
+  const b = _.find(Object.keys(this.bullets), bId => {
+    return this.bullets[bId].body.id === id;
+  })
+
+  if (b) {
+    return this.bullets[b];
+  }
+
+  return undefined;
+
+}
+
 
 // Main loop update
 GameCore.prototype.update = function(t) {
@@ -91,18 +182,28 @@ GameCore.prototype.update = function(t) {
 
 GameCore.prototype.processInput = function(player) {
 
-  let xDir = 0;
-  let yDir = 0;
-
   // let movementVector = this.createVectorFromDirection(0, 0);
   let movementVector = [0, 0];
   let angle = 0
   let newBullets = [];
 
+  let xDir = 0;
+  let yDir = 0;
+
+  if (!player.isAlive) {
+    return {
+      movementVector,
+      angle,
+      newBullets
+    }
+  }
+
+
   if (player.inputs.length) {
     for (var i = 0; i < player.inputs.length; i++) {
 
-        // controllo sequenzialità degli input
+        // controllo sequenzialità degli input per perevenire di applicare
+        // input che per qualche motivo sono arrivati più tardi
         if (player.inputs[i].seq <= player.lastInputSeq) {
           continue
         }
@@ -197,11 +298,55 @@ GameCore.prototype.v_lerp = function(v,tv,t) { return { x: this.lerp(v.x, tv.x, 
 
 GameCore.prototype.buildMap = function() {
   console.log('build map');
-  const obstacle = new Obstacle();
-  obstacle.id = Math.random().toString(36).substring(2);
-  this.obstacles[obstacle.id] = obstacle;
 
-  this.world.addBody(obstacle.body);
+  // caricare mappa via request o ajax a seconda di server o client
+  var map = require('./maps/base.json');
+
+  console.log(map);
+
+  const top = new Obstacle('rect', map.width / 2, 10, map.width, 20);
+  top.id = 'top';
+  this.obstacles[top.id] = top;
+  this.world.addBody(top.body);
+
+  const bottom = new Obstacle('rect', map.width / 2, map.height - 10, map.width, 20);
+  bottom.id = 'bottom';
+  this.obstacles[bottom.id] = bottom;
+  this.world.addBody(bottom.body);
+
+  const left = new Obstacle('rect', -10, map.height / 2, 20, map.height);
+  left.id = 'left';
+  this.obstacles[left.id] = left;
+  this.world.addBody(left.body);
+
+  const right = new Obstacle('rect', map.width + 10, map.height / 2, 20, map.height);
+  left.id = 'right';
+  this.obstacles[right.id] = right;
+  this.world.addBody(right.body);
+
+  // const bottom = new Obstacle('rect', 0, map.height, map.width, 20);
+
+  for (let i = 0; i < map.obstacles.length; i++) {
+
+    const obstacle = new Obstacle(
+      map.obstacles[i].type,
+      map.obstacles[i].x,
+      map.obstacles[i].y,
+      map.obstacles[i].width,
+      map.obstacles[i].height
+    );
+
+    obstacle.id = Math.random().toString(36).substring(2);
+    this.obstacles[obstacle.id] = obstacle;
+
+    this.world.addBody(obstacle.body);
+  }
+
+  // const obstacle = new Obstacle();
+  // obstacle.id = Math.random().toString(36).substring(2);
+  // this.obstacles[obstacle.id] = obstacle;
+  //
+  // this.world.addBody(obstacle.body);
 
 }
 
@@ -214,11 +359,19 @@ GameCore.prototype.addPlayer = function(socketId) {
   this.world.addBody(p.body);
 }
 
-GameCore.prototype.addBullet = function(bulletId, startX, startY, xDir, yDir) {
+/**
+* params : {
+bulletId, startX, startY, owner
+}
+*
+*/
+GameCore.prototype.addBullet = function(params) {
   var b = new Bullet();
-  b.body.position = [startX, startY];
+  b.body.position = [params.startX, params.startY];
 
-  b.id = bulletId;
+  b.owner = params.owner;
+
+  b.id = params.bulletId;
   this.bullets[b.id] = b;
   this.world.addBody(b.body);
 }

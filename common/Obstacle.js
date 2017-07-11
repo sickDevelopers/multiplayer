@@ -1,17 +1,18 @@
 const p2 = require('p2');
 
-const Obstacle = function() {
+const Obstacle = function(type, x, y, width, height) {
 
-  this.shape = new p2.Circle({
-    radius: 40
+  this.type = type;
+
+  this.shape = new p2.Box({
+    width: width,
+    height: height
   });
-
-  this.life = 30;
 
   this.body = new p2.Body({
     velocity: [0, 0],
     angularVelocity: 0,
-    position: [150, 150]
+    position: [x, y]
   })
   this.body.addShape(this.shape);
 

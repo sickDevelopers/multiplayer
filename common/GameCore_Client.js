@@ -17,7 +17,10 @@ const GameCore_Client = function(renderer) {
   this.netOffset = 100; //100 ms latency between server and client interpolation for other clients
   this.serverTime = 0.01;
 
+  // approach to net logic
   this.naiveApproach = true;
+  this.clientSidePrediction = false;
+  this.serverReconciliation = false;
 
   // input
   this.inputSequence = 0;
@@ -38,6 +41,23 @@ const GameCore_Client = function(renderer) {
 GameCore_Client.prototype = new GameCore();
 GameCore_Client.prototype.constructor = GameCore_Client;
 
+
+GameCore_Client.prototype.setViewport = function(width, height) {
+  this.viewport = {
+    x: 0,
+    y: 0,
+    width: width,
+    height: height
+  }
+}
+
+GameCore_Client.prototype.adjustViewport = function() {
+  this.viewport = Object.assign({}, this.viewport, {
+    x: this.player.body.position[0] - (this.viewport.width / 2),
+    y: this.player.body.position[1] - (this.viewport.height / 2)
+  });
+  // console.log(this.viewport);
+}
 
 GameCore_Client.prototype.onServerMessage = function(channel, data) {
   switch(channel) {
@@ -69,61 +89,84 @@ GameCore_Client.prototype.onServerUpdate = function(data) {
   //Update our local offset time from the last server update
   this.clientTime = this.serverTime - (this.netOffset/1000);
 
-  // console.log(data);
-
   if (this.naiveApproach) {
 
-    Object.keys(data.positions).forEach(pId => {
-
-      if (pId === this.player.id) {
-        this.player.body.position = data.positions[pId].pos
-      } else {
-
-        if(!this.players[pId]) {
-          console.log('player joined');
-          this.addPlayer(pId);
-        }
-        this.players[pId].body.position = data.positions[pId].pos;
-        this.players[pId].body.angle = data.positions[pId].angle;
-
-      }
-
-    })
-
-    Object.keys(data.bullets).forEach(bulletId => {
-
-      let endPointX = data.bullets[bulletId].pos[0],
-        endPointY = data.bullets[bulletId].pos[1],
-        startPointX = this.player.body.position[0] + (10 * Math.cos(this.player.body.angle)),
-        startPointY = this.player.body.position[1] + (10 * Math.sin(this.player.body.angle));
-
-        console.log('start', Math.cos(this.player.body.angle), Math.sin(this.player.body.angle))
-
-      if (!this.bullets[bulletId]) {
-        this.addBullet(bulletId, startPointX , startPointY);
-      } else {
-        this.bullets[bulletId].body.position = [data.bullets[bulletId].pos[0], data.bullets[bulletId].pos[1]];
-      }
-
-    });
-
-    // eliminazione dei bullet presenti
-    Object.keys(this.bullets).forEach(bulletId => {
-      if (!data.bullets[bulletId]) {
-        this.world.removeBody(this.bullets[bulletId].body);
-        delete this.bullets[bulletId];
-      }
-    })
-
+    this.lanApproachUpdate(data);
 
   } else {
     // implementare metodo per lag di rete
+
+
 
     this.serverUpdates.push(data);
 
   }
 
 }
+
+GameCore_Client.prototype.lanApproachUpdate = function(data) {
+  Object.keys(data.positions).forEach(pId => {
+
+    if (pId === this.player.id) {
+
+      this.player.body.position = data.positions[pId].pos
+      this.player.body.angle = data.positions[pId].angle;
+      this.player.health = data.positions[pId].health;
+      this.player.points = data.positions[pId].points;
+      this.player.isAlive = data.positions[pId].isAlive;
+
+    } else {
+
+      if(!this.players[pId]) {
+        console.log('player joined');
+        this.addPlayer(pId);
+      }
+      this.players[pId].body.position = data.positions[pId].pos;
+      this.players[pId].body.angle = data.positions[pId].angle;
+      this.players[pId].health = data.positions[pId].health;
+      this.players[pId].points = data.positions[pId].points;
+      this.players[pId].isAlive = data.positions[pId].isAlive;
+
+    }
+
+  })
+
+  Object.keys(data.bullets).forEach(bulletId => {
+
+    let endPointX = data.bullets[bulletId].pos[0],
+      endPointY = data.bullets[bulletId].pos[1],
+      startPointX = this.player.body.position[0],
+      startPointY = this.player.body.position[1];
+
+      const ownerId = data.bullets[bulletId].owner;
+      let owner = this.players[ownerId] || this.player;
+
+      let bulletParams = {
+        bulletId,
+        startPointX ,
+        startPointY,
+        owner
+      }
+
+    if (!this.bullets[bulletId]) {
+      this.addBullet(bulletParams);
+    } else {
+      this.bullets[bulletId].body.position = [data.bullets[bulletId].pos[0], data.bullets[bulletId].pos[1]];
+    }
+
+  });
+
+  // eliminazione dei bullet presenti
+  Object.keys(this.bullets).forEach(bulletId => {
+    if (!data.bullets[bulletId]) {
+      this.world.removeBody(this.bullets[bulletId].body);
+      delete this.bullets[bulletId];
+    }
+  })
+
+  this.adjustViewport();
+}
+
 
 GameCore_Client.prototype.clientConnect = function() {
   this.socket = this.io.connect('http://localhost:' + this.gamePort);
@@ -216,6 +259,12 @@ GameCore_Client.prototype.handleInput = function() {
 
 GameCore_Client.prototype.handleMouseClick = function(x, y) {
   this.inputSequence += 1;
+
+  x = this.getWorldX(x);
+  y = this.getWorldY(y);
+
+  // console.log('World click', x, y);
+
   let mouseInput = {
     inputs: ['click:'+ x + ':' + y],
     time: this.localTime.toFixed(3),

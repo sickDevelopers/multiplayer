@@ -7,6 +7,11 @@ const Bullet = function() {
   });
   // this.shape.sensor = true;
 
+  this.type = 'bullet';
+
+  this.owner;
+  this.color = '#ffffff';
+
   this.life = 30;
 
   this.body = new p2.Body({
