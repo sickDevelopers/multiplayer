@@ -203,6 +203,10 @@ GameCore_Client.prototype.onDisconnect = function() {
   console.log("disconnect");
 }
 
+/*
+Raggruppa gli input e li manda al server
+Se this.clientSidePrediction è true, allora fa client side prediction
+*/
 GameCore_Client.prototype.handleInput = function() {
 
   var xDir = 0;
@@ -245,6 +249,12 @@ GameCore_Client.prototype.handleInput = function() {
 
     // console.log('sent', packetSent);
     this.socket.send('input', packetSent);
+
+    // Do client-side prediction.
+    // if (this.clientSidePrediction) {
+    //   // this.entities[this.entity_id].applyInput(input);
+    //   this.processInput(this.player);
+    // }
 
     this.player.inputs = [];
 
